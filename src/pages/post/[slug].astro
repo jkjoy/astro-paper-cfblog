@@ -1,0 +1,370 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getPostBySlug, getAllPostSlugs, getCategoriesByIds, getTagsByIds, getCommentsByPostId } from '../../lib/wp';
+import { mdToHtml } from '../../lib/markdown';
+
+// 预生成文章静态路径
+export async function getStaticPaths() {
+  const slugs = await getAllPostSlugs();
+  return slugs.map((slug) => ({ params: { slug } }));
+}
+
+const slug = Astro.params.slug!;
+const post = await getPostBySlug(slug);
+const pubDate = post ? new Date(post.date).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '';
+const contentHtml = post && post.content ? mdToHtml(post.content) : '';
+const categories = post?.categories?.length ? await getCategoriesByIds(post.categories) : [];
+const tags = post?.tags?.length ? await getTagsByIds(post.tags) : [];
+
+// 评论数据（按父子分组）
+const commentsRaw = post ? await getCommentsByPostId(post.id) : [];
+const commentsByParent = new Map<number, typeof commentsRaw>();
+commentsRaw.forEach((c) => {
+  const arr = commentsByParent.get(c.parent) || [];
+  arr.push(c);
+  commentsByParent.set(c.parent, arr);
+});
+const topComments = commentsRaw.filter((c) => c.parent === 0);
+const childrenOf = (id: number) => commentsByParent.get(id) ?? [];
+const API_ROOT = import.meta.env.CFBLOG_API ?? 'https://cfblog.zxd.im';
+---
+
+<BaseLayout title={post ? post.title : '文章未找到'} description={post ? post.excerpt ?? '' : '未找到该文章'}>
+  {post ? (
+    <article>
+      <header class="mb-14">
+        <h1 class="my-0! pb-2.5">{post.title}</h1>
+        <div class="text-xs antialiased opacity-60">
+          <time datetime={post.date}>{pubDate}</time>
+          {categories.length > 0 && (
+            <>
+              <span class="mx-1">&middot;</span>
+              {categories.map((c, i) => (
+                <>
+                  <a class="underline" href={`/category/${c.slug}`}>{c.name}</a>
+                  {i < categories.length - 1 && <span>、</span>}
+                </>
+              ))}
+            </>
+          )}
+        </div>
+      </header>
+
+      <section set:html={contentHtml}></section>
+
+      {tags.length > 0 && (
+        <footer class="mt-12 flex flex-wrap">
+          {tags.map((t) => (
+            <a
+              class="mb-1.5 rounded-lg bg-black/[3%] px-5 py-1 no-underline hover:bg-black/[6%] ltr:mr-1.5 rtl:ml-1.5 dark:bg-white/[8%] dark:hover:bg-white/[12%]"
+              href={`/tag/${t.slug}`}
+            >
+              {t.name}
+            </a>
+          ))}
+        </footer>
+      )}
+
+      <!-- 评论列表（统一 Paper 风格，无需额外样式块） -->
+      <section class="mt-24">
+        <h2 class="my-0! pb-2.5">评论</h2>
+        {topComments.length > 0 ? (
+          topComments.map((c) => (
+            <section class="relative my-10 first-of-type:mt-0 last-of-type:mb-0">
+              <div class="flex items-center">
+                {c.avatar ? (
+                  <img
+                    class="rounded-full border-[0.5px] border-black/10 bg-white/50 ltr:mr-3 rtl:ml-3 dark:bg-white/90!"
+                    src={c.avatar}
+                    alt={c.authorName}
+                    width="32"
+                    height="32"
+                    style="width:32px!important;height:32px!important;object-fit:cover"
+                  />
+                ) : null}
+                <div style="margin-left:8px">
+                  {c.authorUrl ? (
+                    <a class="no-underline my-0!" style="font-size:12px!important" href={c.authorUrl} target="_blank" rel="noopener">{c.authorName}</a>
+                  ) : (
+                    <span class="my-0!" style="font-size:12px!important">{c.authorName}</span>
+                  )}
+                  <div class="text-xs antialiased opacity-60">
+                    {new Date(c.date).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })}
+                    {c.authorIp && (
+                      <>
+                        <span class="mx-1">&middot;</span>
+                        <span class="geo" data-ip={c.authorIp}>定位中…</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div class="mt-3 prose prose-neutral dark:prose-invert" set:html={c.contentHtml}></div>
+              <div class="mt-3">
+                <button type="button" class="btn not-prose" style="padding:2px 8px;font-size:10px" data-reply={String(c.id)}>回复</button>
+              </div>
+
+              {(Array.isArray(c.children) ? c.children.length > 0 : childrenOf(c.id).length > 0) && (
+                <div class="mt-6 ltr:ml-6 rtl:mr-6 border-l-[0.5px] border-black/10 pl-3 dark:border-white/30">
+                  {(Array.isArray(c.children) && c.children.length > 0 ? c.children : childrenOf(c.id)).map((r) => (
+                    <section class="relative my-6 first-of-type:mt-0 last-of-type:mb-0">
+                      <div class="flex items-center">
+                        {r.avatar ? (
+                          <img
+                            class="rounded-full border-[0.5px] border-black/10 bg-white/50 ltr:mr-3 rtl:ml-3 dark:bg-white/90!"
+                            src={r.avatar}
+                            alt={r.authorName}
+                            width="32"
+                            height="32"
+                            style="width:32px!important;height:32px!important;object-fit:cover"
+                          />
+                        ) : null}
+                        <div style="margin-left:8px">
+                          {r.authorUrl ? (
+                            <a class="no-underline my-0!" style="font-size:12px!important" href={r.authorUrl} target="_blank" rel="noopener">{r.authorName}</a>
+                          ) : (
+                            <span class="my-0!" style="font-size:12px!important">{r.authorName}</span>
+                          )}
+                          <div class="text-xs antialiased opacity-60">
+                            {new Date(r.date).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })}
+                            {r.authorIp && (
+                              <>
+                                <span class="mx-1">&middot;</span>
+                                <span class="geo" data-ip={r.authorIp}>定位中…</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="mt-2 prose prose-neutral dark:prose-invert" set:html={r.contentHtml}></div>
+                      <div class="mt-3">
+                        <button type="button" class="btn not-prose" style="padding:2px 8px;font-size:10px" data-reply={String(r.id)}>回复</button>
+                      </div>
+                      {(Array.isArray(r.children) ? r.children.length > 0 : childrenOf(r.id).length > 0) && (
+                        <div class="mt-6 ltr:ml-6 rtl:mr-6 border-l-[0.5px] border-black/10 pl-3 dark:border-white/30">
+                          {(Array.isArray(r.children) ? r.children : childrenOf(r.id)).map((g) => (
+                            <section class="relative my-6 first-of-type:mt-0 last-of-type:mb-0">
+                              <div class="flex items-center">
+                                {g.avatar ? (
+                                  <img
+                                    class="rounded-full border-[0.5px] border-black/10 bg-white/50 ltr:mr-3 rtl:ml-3 dark:bg-white/90!"
+                                    src={g.avatar}
+                                    alt={g.authorName}
+                                    width="32"
+                                    height="32"
+                                    style="width:32px!important;height:32px!important;object-fit:cover"
+                                  />
+                                ) : null}
+                                <div style="margin-left:8px">
+                                  {g.authorUrl ? (
+                                    <a class="no-underline my-0!" style="font-size:12px!important" href={g.authorUrl} target="_blank" rel="noopener">{g.authorName}</a>
+                                  ) : (
+                                    <span class="my-0!" style="font-size:12px!important">{g.authorName}</span>
+                                  )}
+                                  <div class="text-xs antialiased opacity-60">
+                                    {new Date(g.date).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })}
+                                    {g.authorIp && (
+                                      <>
+                                        <span class="mx-1">&middot;</span>
+                                        <span class="geo" data-ip={g.authorIp}>定位中…</span>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <div class="mt-2 prose prose-neutral dark:prose-invert" set:html={g.contentHtml}></div>
+                              <div class="mt-3">
+                                <button type="button" class="btn not-prose" style="padding:2px 8px;font-size:10px" data-reply={String(g.id)}>回复</button>
+                              </div>
+                            </section>
+                          ))}
+                        </div>
+                      )}
+                    </section>
+                  ))}
+                </div>
+              )}
+            </section>
+          ))
+        ) : (
+          <p class="text-xs antialiased opacity-60">暂无评论</p>
+        )}
+      </section>
+      <!-- 评论提交表单（昵称、邮箱、网站、内容；通过 WP REST API 提交） -->
+      <section class="mt-24">
+        <h2 class="my-0! pb-2.5">发表评论</h2>
+        <form id="comment-form" class="space-y-3" novalidate data-api-root={API_ROOT} data-post-id={post?.id ?? 0}>
+          <div class="flex flex-col">
+            <label class="text-xs antialiased opacity-60 mb-1" for="c-name">昵称</label>
+            <input id="c-name" name="name" required class="rounded-lg border px-5 py-1" placeholder="请输入昵称" />
+          </div>
+          <div class="flex flex-col">
+            <label class="text-xs antialiased opacity-60 mb-1" for="c-email">邮箱</label>
+            <input id="c-email" name="email" type="email" required class="rounded-lg border px-5 py-1" placeholder="name@example.com" />
+          </div>
+          <div class="flex flex-col">
+            <label class="text-xs antialiased opacity-60 mb-1" for="c-url">网站地址</label>
+            <input id="c-url" name="url" type="url" class="rounded-lg border px-5 py-1" placeholder="https://your.site" />
+          </div>
+          <div class="flex flex-col">
+            <label class="text-xs antialiased opacity-60 mb-1" for="c-content">评论内容</label>
+            <textarea id="c-content" name="content" rows="5" required class="rounded-lg border px-5 py-1" placeholder="请输入评论内容"></textarea>
+          </div>
+          <input type="hidden" id="c-parent" name="parent_id" value="" />
+          <div class="mt-3 flex items-center gap-4">
+            <button type="submit" class="btn not-prose">提交评论</button>
+            <span id="c-status" class="text-xs antialiased opacity-60"></span>
+          </div>
+        </form>
+      </section>
+
+      <script>
+        // 客户端提交评论（直接调用 WP REST /wp/v2/comments）
+        (() => {
+          const form = document.getElementById('comment-form');
+          const statusEl = document.getElementById('c-status');
+          const apiRoot = (form?.dataset?.apiRoot || 'https://cfblog.zxd.im').replace(/\/+$/,'');
+          const api = `${apiRoot}/wp-json/wp/v2/comments`;
+          const postId = Number(form?.dataset?.postId || 0);
+
+          function setStatus(msg, isError = false) {
+            if (!statusEl) return;
+            statusEl.textContent = msg;
+            statusEl.style.color = isError ? 'crimson' : '';
+          }
+
+          function validEmail(email) {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+          }
+
+          // 根据 IP 显示归属地（懒加载 + 本地缓存）
+          try {
+            const geoCache = (() => {
+              try { return JSON.parse(localStorage.getItem('ip-geo-cache') || '{}'); } catch { return {}; }
+            })();
+            const writeGeo = (ip, text) => {
+              document.querySelectorAll(`.geo[data-ip="${ip}"]`).forEach((el) => { el.textContent = text || ''; });
+            };
+            const geoEls = Array.from(document.querySelectorAll('.geo'));
+            const ips = [...new Set(geoEls.map((el) => (el.getAttribute('data-ip') || '').trim()).filter((ip) => ip && ip !== '::1' && ip !== '127.0.0.1'))];
+
+            ips.forEach((ip) => {
+              if (geoCache[ip]) {
+                writeGeo(ip, `来自 ${geoCache[ip]}`);
+                return;
+              }
+              writeGeo(ip, '定位中…');
+              // 优先使用支持 CORS 的 ipapi.co，失败再回退 ip-api.com
+              fetch(`https://ipapi.co/${ip}/json/`)
+                .then((r) => r.ok ? r.json() : Promise.reject('ipapi.co failed'))
+                .then((j) => {
+                  if (j && !j.error) {
+                    const parts = [j.country_name, j.region, j.city].filter(Boolean);
+                    const text = parts.join(' · ');
+                    geoCache[ip] = text;
+                    try { localStorage.setItem('ip-geo-cache', JSON.stringify(geoCache)); } catch {}
+                    writeGeo(ip, `来自 ${text}`);
+                  } else {
+                    throw new Error('ipapi.co error');
+                  }
+                })
+                .catch(() => {
+                  fetch(`https://ip-api.com/json/${ip}?lang=zh-CN&fields=status,country,regionName,city,query`)
+                    .then((r) => r.json())
+                    .then((j) => {
+                      if (j && j.status === 'success') {
+                        const parts = [j.country, j.regionName, j.city].filter(Boolean);
+                        const text = parts.join(' · ');
+                        geoCache[ip] = text;
+                        try { localStorage.setItem('ip-geo-cache', JSON.stringify(geoCache)); } catch {}
+                        writeGeo(ip, `来自 ${text}`);
+                      } else {
+                        writeGeo(ip, '');
+                      }
+                    })
+                    .catch(() => writeGeo(ip, ''));
+                });
+            });
+          } catch {}
+
+          // 点击“回复”按钮为表单设置 parent_id 并滚动到表单
+          document.addEventListener('click', (ev) => {
+            const t = ev.target as HTMLElement;
+            const btn = t.closest('[data-reply]') as HTMLElement | null;
+            if (btn) {
+              const id = Number(btn.getAttribute('data-reply') || 0);
+              const parentEl = document.getElementById('c-parent') as any;
+              if (parentEl) parentEl.value = String(id);
+              if (statusEl) statusEl.textContent = `回复评论 #${id}`;
+              form?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          });
+          form?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!postId) {
+              setStatus('无法获取文章 ID，提交失败', true);
+              return;
+            }
+
+            const name = /** @type {HTMLInputElement} */(document.getElementById('c-name'))?.value?.trim() || '';
+            const email = /** @type {HTMLInputElement} */(document.getElementById('c-email'))?.value?.trim() || '';
+            const url = /** @type {HTMLInputElement} */(document.getElementById('c-url'))?.value?.trim() || '';
+            const content = /** @type {HTMLTextAreaElement} */(document.getElementById('c-content'))?.value?.trim() || '';
+
+            if (!name || !email || !content) {
+              setStatus('昵称、邮箱与评论内容为必填', true);
+              return;
+            }
+            if (!validEmail(email)) {
+              setStatus('邮箱格式不正确', true);
+              return;
+            }
+
+            setStatus('提交中...');
+            try {
+              const payload = {
+                post_id: postId,
+                author_name: name,
+                author_email: email,
+                author_url: url || undefined,
+                content,
+              };
+
+              // 若已选择回复目标，则加入 parent_id
+              const parentVal = (document.getElementById('c-parent') as any)?.value;
+              if (parentVal) (payload as any).parent_id = Number(parentVal) || 0;
+
+              const res = await fetch(api, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json',
+                },
+                body: JSON.stringify(payload),
+                credentials: 'omit',
+              });
+
+              if (!res.ok) {
+                const text = await res.text();
+                throw new Error(`提交失败：${res.status} ${text}`);
+              }
+
+              setStatus('提交成功，若需审核请稍后刷新查看');
+              form.reset();
+            } catch (err) {
+              setStatus(err?.message || String(err), true);
+            }
+          });
+        })();
+      </script>
+
+      <script defer src="/hugo-paper/highlight.min.js" onload="hljs.initHighlightingOnLoad();"></script>
+    </article>
+  ) : (
+    <article class="notfound">
+      <h1>文章未找到</h1>
+      <p>抱歉，未能找到该文章。</p>
+    </article>
+  )}
+</BaseLayout>
+
