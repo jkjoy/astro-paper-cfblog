@@ -66,7 +66,7 @@ const API_ROOT = import.meta.env.CFBLOG_API ?? 'https://cfblog.zxd.im';
       )}
 
       <!-- 评论列表（统一 Paper 风格，无需额外样式块） -->
-      <section class="mt-24">
+      <section id="comments-list" class="mt-24">
         <h2 class="my-0! pb-2.5">评论</h2>
         {topComments.length > 0 ? (
           topComments.map((c) => (
@@ -286,6 +286,52 @@ const API_ROOT = import.meta.env.CFBLOG_API ?? 'https://cfblog.zxd.im';
                 });
             });
           } catch {}
+
+          // Poll comments and live update after static deploy
+          const commentsContainer = document.getElementById('comments-list');
+          async function fetchComments() {
+            try {
+              const res = await fetch(`${apiRoot}/wp-json/wp/v2/comments?post=${postId}&per_page=100`);
+              if (!res.ok) return;
+              const data = await res.json();
+              renderCommentsList(Array.isArray(data) ? data : []);
+            } catch {}
+          }
+          function buildAvatar(hash, urls) {
+            const src = hash ? `https://www.gravatar.com/avatar/${hash}?s=96&d=identicon` : (urls?.['96'] || urls?.['48'] || urls?.['24'] || '');
+            return src;
+          }
+          function escapeHtml(s) { return (s||'').replace(/[&<>]/g, (c)=>({"&":"&","<":"<",">":">"}[c])); }
+          function renderOne(c) {
+            const avatar = buildAvatar(c.author_avatar_hash, c.author_avatar_urls);
+            const ipSpan = c.author_ip ? `<span class="mx-1">&middot;</span><span class="geo" data-ip="${escapeHtml(c.author_ip)}">定位中…</span>` : '';
+            const name = c.author_url ? `<a class="no-underline" style="font-size:12px!important" href="${escapeHtml(c.author_url)}" target="_blank" rel="noopener">${escapeHtml(c.author_name||'访客')}</a>` : `<span style="font-size:12px!important">${escapeHtml(c.author_name||'访客')}</span>`;
+            const dateStr = new Date(c.date).toLocaleDateString('zh-CN', { year:'numeric', month:'2-digit', day:'2-digit' });
+            const children = (Array.isArray(c.children) ? c.children : []).map(renderOne).join('');
+            const childBlock = children ? `<div class="mt-6 ltr:ml-6 rtl:mr-6 border-l-[0.5px] border-black/10 pl-3 dark:border-white/30">${children}</div>` : '';
+            return `
+              <section class="relative my-6 first-of-type:mt-0 last-of-type:mb-0">
+                <div class="flex items-center">
+                  ${avatar ? `<img class="rounded-full border-[0.5px] border-black/10 ltr:mr-3 rtl:ml-3 dark:bg-white/90!" src="${escapeHtml(avatar)}" alt="${escapeHtml(c.author_name||'访客')}" width="32" height="32" style="width:32px!important;height:32px!important;object-fit:cover"/>` : ''}
+                  <div style="margin-left:8px">
+                    ${name}
+                    <div class="text-xs antialiased opacity-60">${dateStr}${ipSpan}</div>
+                  </div>
+                </div>
+                <div class="mt-2 prose prose-neutral dark:prose-invert">${c.content?.rendered || ''}</div>
+                <div class="mt-3"><button type="button" class="btn not-prose" style="padding:2px 8px;font-size:10px" data-reply="${String(c.id)}">回复</button></div>
+                ${childBlock}
+              </section>`;
+          }
+          function renderCommentsList(list) {
+            if (!commentsContainer) return;
+            const title = `<h2 class="my-0! pb-2.5">评论</h2>`;
+            const body = (list||[]).filter(x=>x && x.parent===0).map(renderOne).join('');
+            commentsContainer.innerHTML = title + (body || `<p class="text-xs antialiased opacity-60">暂无评论</p>`);
+          }
+          // initial and interval
+          fetchComments();
+          setInterval(fetchComments, 30000);
 
           // 点击“回复”按钮为表单设置 parent_id 并滚动到表单
           document.addEventListener('click', (ev) => {
