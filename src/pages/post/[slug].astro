@@ -69,8 +69,10 @@ const API_ROOT = import.meta.env.CFBLOG_API ?? 'https://cfblog.zxd.im';
       <section id="comments-list" class="mt-24">
         <h2 class="my-0! pb-2.5">评论</h2>
         {topComments.length > 0 ? (
-          topComments.map((c) => (
-            <section class="relative my-10 first-of-type:mt-0 last-of-type:mb-0">
+          topComments.map((c, i) => (
+            <>
+              {i > 0 && <hr class="my-3 border-t border-black/10 dark:border-white/20" style="margin-bottom:-10px" />}
+              <section class="relative my-10 first-of-type:mt-0 last-of-type:mb-0">
               <div class="flex items-center">
                 {c.avatar ? (
                   <img
@@ -90,12 +92,7 @@ const API_ROOT = import.meta.env.CFBLOG_API ?? 'https://cfblog.zxd.im';
                   )}
                   <div class="text-xs antialiased opacity-60">
                     {new Date(c.date).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })}
-                    {c.authorIp && (
-                      <>
-                        <span class="mx-1">&middot;</span>
-                        <span class="geo" data-ip={c.authorIp}>定位中…</span>
-                      </>
-                    )}
+                    {/* authorIp removed: 不再显示定位信息 */}
                   </div>
                 </div>
               </div>
@@ -105,7 +102,7 @@ const API_ROOT = import.meta.env.CFBLOG_API ?? 'https://cfblog.zxd.im';
               </div>
 
               {(Array.isArray(c.children) ? c.children.length > 0 : childrenOf(c.id).length > 0) && (
-                <div class="mt-6 ltr:ml-6 rtl:mr-6 border-l-[0.5px] border-black/10 pl-3 dark:border-white/30">
+                <div class="mt-6 ltr:ml-8 rtl:mr-8 border-l-[0.5px] border-black/10 pl-3 dark:border-white/30">
                   {(Array.isArray(c.children) && c.children.length > 0 ? c.children : childrenOf(c.id)).map((r) => (
                     <section class="relative my-6 first-of-type:mt-0 last-of-type:mb-0">
                       <div class="flex items-center">
@@ -127,12 +124,7 @@ const API_ROOT = import.meta.env.CFBLOG_API ?? 'https://cfblog.zxd.im';
                           )}
                           <div class="text-xs antialiased opacity-60">
                             {new Date(r.date).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })}
-                            {r.authorIp && (
-                              <>
-                                <span class="mx-1">&middot;</span>
-                                <span class="geo" data-ip={r.authorIp}>定位中…</span>
-                              </>
-                            )}
+                            {/* authorIp removed: 不再显示定位信息 */}
                           </div>
                         </div>
                       </div>
@@ -141,7 +133,7 @@ const API_ROOT = import.meta.env.CFBLOG_API ?? 'https://cfblog.zxd.im';
                         <button type="button" class="btn not-prose" style="padding:2px 8px;font-size:10px" data-reply={String(r.id)}>回复</button>
                       </div>
                       {(Array.isArray(r.children) ? r.children.length > 0 : childrenOf(r.id).length > 0) && (
-                        <div class="mt-6 ltr:ml-6 rtl:mr-6 border-l-[0.5px] border-black/10 pl-3 dark:border-white/30">
+                        <div class="mt-6 ltr:ml-8 rtl:mr-8 border-l-[0.5px] border-black/10 pl-3 dark:border-white/30">
                           {(Array.isArray(r.children) ? r.children : childrenOf(r.id)).map((g) => (
                             <section class="relative my-6 first-of-type:mt-0 last-of-type:mb-0">
                               <div class="flex items-center">
@@ -163,12 +155,7 @@ const API_ROOT = import.meta.env.CFBLOG_API ?? 'https://cfblog.zxd.im';
                                   )}
                                   <div class="text-xs antialiased opacity-60">
                                     {new Date(g.date).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })}
-                                    {g.authorIp && (
-                                      <>
-                                        <span class="mx-1">&middot;</span>
-                                        <span class="geo" data-ip={g.authorIp}>定位中…</span>
-                                      </>
-                                    )}
+                                    {/* authorIp removed: 不再显示定位信息 */}
                                   </div>
                                 </div>
                               </div>
@@ -185,6 +172,7 @@ const API_ROOT = import.meta.env.CFBLOG_API ?? 'https://cfblog.zxd.im';
                 </div>
               )}
             </section>
+            </>
           ))
         ) : (
           <p class="text-xs antialiased opacity-60">暂无评论</p>
@@ -237,55 +225,7 @@ const API_ROOT = import.meta.env.CFBLOG_API ?? 'https://cfblog.zxd.im';
             return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
           }
 
-          // 根据 IP 显示归属地（懒加载 + 本地缓存）
-          try {
-            const geoCache = (() => {
-              try { return JSON.parse(localStorage.getItem('ip-geo-cache') || '{}'); } catch { return {}; }
-            })();
-            const writeGeo = (ip, text) => {
-              document.querySelectorAll(`.geo[data-ip="${ip}"]`).forEach((el) => { el.textContent = text || ''; });
-            };
-            const geoEls = Array.from(document.querySelectorAll('.geo'));
-            const ips = [...new Set(geoEls.map((el) => (el.getAttribute('data-ip') || '').trim()).filter((ip) => ip && ip !== '::1' && ip !== '127.0.0.1'))];
-
-            ips.forEach((ip) => {
-              if (geoCache[ip]) {
-                writeGeo(ip, `来自 ${geoCache[ip]}`);
-                return;
-              }
-              writeGeo(ip, '定位中…');
-              // 优先使用支持 CORS 的 ipapi.co，失败再回退 ip-api.com
-              fetch(`https://ipapi.co/${ip}/json/`)
-                .then((r) => r.ok ? r.json() : Promise.reject('ipapi.co failed'))
-                .then((j) => {
-                  if (j && !j.error) {
-                    const parts = [j.country_name, j.region, j.city].filter(Boolean);
-                    const text = parts.join(' · ');
-                    geoCache[ip] = text;
-                    try { localStorage.setItem('ip-geo-cache', JSON.stringify(geoCache)); } catch {}
-                    writeGeo(ip, `来自 ${text}`);
-                  } else {
-                    throw new Error('ipapi.co error');
-                  }
-                })
-                .catch(() => {
-                  fetch(`https://ip-api.com/json/${ip}?lang=zh-CN&fields=status,country,regionName,city,query`)
-                    .then((r) => r.json())
-                    .then((j) => {
-                      if (j && j.status === 'success') {
-                        const parts = [j.country, j.regionName, j.city].filter(Boolean);
-                        const text = parts.join(' · ');
-                        geoCache[ip] = text;
-                        try { localStorage.setItem('ip-geo-cache', JSON.stringify(geoCache)); } catch {}
-                        writeGeo(ip, `来自 ${text}`);
-                      } else {
-                        writeGeo(ip, '');
-                      }
-                    })
-                    .catch(() => writeGeo(ip, ''));
-                });
-            });
-          } catch {}
+          // 已移除 IP 定位相关功能，避免在客户端展示或请求第三方定位服务
 
           // Poll comments and live update after static deploy
           const commentsContainer = document.getElementById('comments-list');
@@ -304,18 +244,19 @@ const API_ROOT = import.meta.env.CFBLOG_API ?? 'https://cfblog.zxd.im';
           function escapeHtml(s) { return (s||'').replace(/[&<>]/g, (c)=>({"&":"&","<":"<",">":">"}[c])); }
           function renderOne(c) {
             const avatar = buildAvatar(c.author_avatar_hash, c.author_avatar_urls);
-            const ipSpan = c.author_ip ? `<span class="mx-1">&middot;</span><span class="geo" data-ip="${escapeHtml(c.author_ip)}">定位中…</span>` : '';
+            // author_ip 不再渲染或触发定位请求
+            const ipSpan = '';
             const name = c.author_url ? `<a class="no-underline" style="font-size:12px!important" href="${escapeHtml(c.author_url)}" target="_blank" rel="noopener">${escapeHtml(c.author_name||'访客')}</a>` : `<span style="font-size:12px!important">${escapeHtml(c.author_name||'访客')}</span>`;
             const dateStr = new Date(c.date).toLocaleDateString('zh-CN', { year:'numeric', month:'2-digit', day:'2-digit' });
             const children = (Array.isArray(c.children) ? c.children : []).map(renderOne).join('');
-            const childBlock = children ? `<div class="mt-6 ltr:ml-6 rtl:mr-6 border-l-[0.5px] border-black/10 pl-3 dark:border-white/30">${children}</div>` : '';
+            const childBlock = children ? `<div class="mt-6 ltr:ml-8 rtl:mr-8 border-l-[0.5px] border-black/10 pl-3 dark:border-white/30">${children}</div>` : '';
             return `
               <section class="relative my-6 first-of-type:mt-0 last-of-type:mb-0">
                 <div class="flex items-center">
-                  ${avatar ? `<img class="rounded-full border-[0.5px] border-black/10 ltr:mr-3 rtl:ml-3 dark:bg-white/90!" src="${escapeHtml(avatar)}" alt="${escapeHtml(c.author_name||'访客')}" width="32" height="32" style="width:32px!important;height:32px!important;object-fit:cover"/>` : ''}
+                    ${avatar ? `<img class="rounded-full border-[0.5px] border-black/10 ltr:mr-3 rtl:ml-3 dark:bg-white/90!" src="${escapeHtml(avatar)}" alt="${escapeHtml(c.author_name||'访客')}" width="32" height="32" style="width:32px!important;height:32px!important;object-fit:cover"/>` : ''}
                   <div style="margin-left:8px">
                     ${name}
-                    <div class="text-xs antialiased opacity-60">${dateStr}${ipSpan}</div>
+                    <div class="text-xs antialiased opacity-60">${dateStr}</div>
                   </div>
                 </div>
                 <div class="mt-2 prose prose-neutral dark:prose-invert">${c.content?.rendered || ''}</div>
@@ -326,7 +267,7 @@ const API_ROOT = import.meta.env.CFBLOG_API ?? 'https://cfblog.zxd.im';
           function renderCommentsList(list) {
             if (!commentsContainer) return;
             const title = `<h2 class="my-0! pb-2.5">评论</h2>`;
-            const body = (list||[]).filter(x=>x && x.parent===0).map(renderOne).join('');
+            const body = (list||[]).filter(x=>x && x.parent===0).map(renderOne).join('<hr class="my-3 border-t border-black/10 dark:border-white/20" style="margin-bottom:-10px" />');
             commentsContainer.innerHTML = title + (body || `<p class="text-xs antialiased opacity-60">暂无评论</p>`);
           }
           // initial and interval
@@ -404,7 +345,7 @@ const API_ROOT = import.meta.env.CFBLOG_API ?? 'https://cfblog.zxd.im';
         })();
       </script>
 
-      <script defer src="/hugo-paper/highlight.min.js" onload="hljs.initHighlightingOnLoad();"></script>
+      <script defer src="/assets/highlight.min.js" onload="hljs.initHighlightingOnLoad();"></script>
     </article>
   ) : (
     <article class="notfound">

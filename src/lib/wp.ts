@@ -416,7 +416,7 @@ export interface WPComment {
   avatar?: string;
   avatarHash?: string;
   postTitle?: string;
-  authorIp?: string;
+  // authorIp intentionally removed from public model to avoid rendering/location lookup
   children?: WPComment[];
   date: string;
   contentHtml: string;
@@ -442,7 +442,7 @@ function mapComment(c: WPCommentRaw): WPComment {
     avatar,
     avatarHash: hash,
     postTitle: c.post_title,
-    authorIp: c.author_ip,
+    // omit authorIp to avoid exposing IP/location data in generated output
     children,
     date: c.date,
     contentHtml: c.content?.rendered || '',
