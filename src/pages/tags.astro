@@ -9,18 +9,16 @@ const tags = await getTags();
   {tags.length === 0 ? (
     <p class="text-xs antialiased opacity-60 py-1">暂无标签</p>
   ) : (
-    tags.map((tag) => (
-      <section class="relative my-10 first-of-type:mt-0 last-of-type:mb-0">
-        <h2 class="my-0!">{tag.name}</h2>
-        <span class="text-xs antialiased opacity-60">{tag.count ?? 0}</span>
+    <div class="flex flex-wrap" style="gap: 14px 8px;">
+      {tags.map((tag) => (
         <a
-          class="absolute inset-0 text-[0px]"
+          class="inline-flex items-center rounded-lg px-5 py-2 no-underline"
           href={`/tag/${tag.slug}`}
-          aria-label={`查看标签：${tag.name}`}
         >
-          {tag.name}
+          <span>{tag.name}</span>
+          <span class="ml-1 text-xs antialiased opacity-60">({tag.count ?? 0})</span>
         </a>
-      </section>
-    ))
+      ))}
+    </div>
   )}
 </BaseLayout>

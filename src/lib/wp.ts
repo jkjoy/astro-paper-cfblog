@@ -71,7 +71,7 @@ function htmlToText(html?: string, maxLen = 180): string | undefined {
 function mapPost(p: WPPostRaw): WPPost {
   return {
     id: p.id,
-    slug: p.slug,
+    slug: decodeURIComponent(p.slug), // 解码 URL 编码的 slug
     title: p.title?.rendered ?? '',
     excerpt: htmlToText(p.excerpt?.rendered),
     content: p.content?.rendered,
@@ -135,17 +135,29 @@ export async function getAllPostSlugs(limit = 1000, perPage = PAGE_SIZE): Promis
   // 若远端数据很多，limit 可限制最大数量以避免构建时间过长
   // 注意：Cloudflare Pages 构建时间有限，建议根据实际数据调整 limit
   while (true) {
-    const { posts, totalPages } = await getPosts(page, perPage);
-    slugs.push(...posts.map((p) => p.slug));
+    try {
+      const { posts, totalPages } = await getPosts(page, perPage);
+      slugs.push(...posts.map((p) => p.slug));
 
-    if (page >= (totalPages || 1)) break;
-    if (slugs.length >= limit) break;
+      console.log(`[getAllPostSlugs] 第 ${page} 页：获取到 ${posts.length} 篇文章，总页数: ${totalPages}`);
 
-    page += 1;
+      if (page >= (totalPages || 1)) break;
+      if (slugs.length >= limit) {
+        console.warn(`[getAllPostSlugs] 达到限制 ${limit}，可能还有更多文章未获取`);
+        break;
+      }
+
+      page += 1;
+    } catch (error) {
+      console.error(`[getAllPostSlugs] 获取第 ${page} 页失败:`, error);
+      break;
+    }
   }
 
   // 去重
-  return Array.from(new Set(slugs));
+  const uniqueSlugs = Array.from(new Set(slugs));
+  console.log(`[getAllPostSlugs] 总共获取 ${uniqueSlugs.length} 个唯一 slug`);
+  return uniqueSlugs;
 }
 
 // 站点信息（用于从 API 读取网站标题与描述）
@@ -314,8 +326,13 @@ export interface WPSettings {
 }
 
 export async function getSettings(): Promise<WPSettings> {
-  const { data } = await fetchJSON<WPSettings>(`${WP_V2}/settings`);
-  return data || {};
+  try {
+    const { data } = await fetchJSON<WPSettings>(`${WP_V2}/settings`);
+    return data || {};
+  } catch (error) {
+    console.warn('无法获取 WordPress 设置，使用默认值:', error);
+    return {};
+  }
 }
 
 /**

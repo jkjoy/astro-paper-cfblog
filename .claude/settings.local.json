@@ -5,7 +5,8 @@
       "Bash(python -m json.tool:*)",
       "Bash(npm install:*)",
       "Bash(npm run build:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(node test-slugs.js:*)"
     ],
     "deny": [],
     "ask": []
