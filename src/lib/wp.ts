@@ -324,11 +324,12 @@ export async function getSettings(): Promise<WPSettings> {
 /**
  * Build gravatar image URL from email (MD5 hashed, lowercased, trimmed)
  * Uses Node crypto via dynamic import to avoid bundling issues.
+ * 使用 Cravatar 中国加速节点
  */
 export async function gravatarUrl(email: string, size = 160): Promise<string> {
   const { createHash } = await import('node:crypto');
   const hash = createHash('md5').update(email.trim().toLowerCase()).digest('hex');
-  return `https://www.gravatar.com/avatar/${hash}?s=${size}&d=identicon`;
+  return `https://cravatar.cn/avatar/${hash}?s=${size}&d=identicon`;
 }
 // Links API (WordPress custom endpoint)
 export interface WPLink {
@@ -425,7 +426,7 @@ export interface WPComment {
 function mapComment(c: WPCommentRaw): WPComment {
   const avatars = c.author_avatar_urls || {};
   const hash = c.author_avatar_hash;
-  const avatarFromHash = hash ? `https://www.gravatar.com/avatar/${hash}?s=96&d=identicon` : undefined;
+  const avatarFromHash = hash ? `https://cravatar.cn/avatar/${hash}?s=96&d=identicon` : undefined;
   const avatar =
     avatarFromHash ||
     avatars['96'] ||
@@ -461,4 +462,61 @@ export async function getCommentsByPostId(postId: number, perPage = 100): Promis
   });
   const { data } = await fetchJSON<WPCommentRaw[]>(url);
   return (data || []).map(mapComment);
+}
+
+// Users API (WordPress REST: /wp/v2/users)
+export interface WPUserRaw {
+  id: number;
+  name: string;
+  url?: string;
+  description?: string;
+  link?: string;
+  slug?: string;
+  avatar_urls?: Record<string, string>;
+  email?: string;
+  roles?: string[];
+  role?: string;
+}
+
+export interface WPUser {
+  id: number;
+  name: string;
+  url?: string;
+  description?: string;
+  link?: string;
+  slug?: string;
+  avatar?: string;
+  email?: string;
+  role?: string;
+}
+
+function mapUser(u: WPUserRaw): WPUser {
+  const avatars = u.avatar_urls || {};
+  const avatar = avatars['96'] || avatars['48'] || avatars['24'] || undefined;
+
+  return {
+    id: u.id,
+    name: u.name || '访客',
+    url: u.url,
+    description: u.description,
+    link: u.link,
+    slug: u.slug,
+    avatar,
+    email: u.email,
+    role: u.role,
+  };
+}
+
+/**
+ * 获取指定用户信息
+ */
+export async function getUserById(userId: number): Promise<WPUser | null> {
+  try {
+    const url = `${WP_V2}/users/${userId}`;
+    const { data } = await fetchJSON<WPUserRaw>(url);
+    return data ? mapUser(data) : null;
+  } catch (err) {
+    console.error(`获取用户 ${userId} 失败:`, err);
+    return null;
+  }
 }

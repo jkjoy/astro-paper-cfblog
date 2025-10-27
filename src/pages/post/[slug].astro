@@ -3,6 +3,10 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getPostBySlug, getAllPostSlugs, getCategoriesByIds, getTagsByIds, getCommentsByPostId } from '../../lib/wp';
 import { mdToHtml } from '../../lib/markdown';
 
+// 导入代码高亮样式
+const codeStylesUrl = '/assets/code-macos.css';
+const codeCopyUrl = '/assets/code-copy.js';
+
 // 预生成文章静态路径
 export async function getStaticPaths() {
   const slugs = await getAllPostSlugs();
@@ -30,6 +34,7 @@ const API_ROOT = import.meta.env.CFBLOG_API ?? 'https://cfblog.zxd.im';
 ---
 
 <BaseLayout title={post ? post.title : '文章未找到'} description={post ? post.excerpt ?? '' : '未找到该文章'}>
+  <link slot="head" rel="stylesheet" href={codeStylesUrl} />
   {post ? (
     <article>
       <header class="mb-14">
@@ -238,7 +243,7 @@ const API_ROOT = import.meta.env.CFBLOG_API ?? 'https://cfblog.zxd.im';
             } catch {}
           }
           function buildAvatar(hash, urls) {
-            const src = hash ? `https://www.gravatar.com/avatar/${hash}?s=96&d=identicon` : (urls?.['96'] || urls?.['48'] || urls?.['24'] || '');
+            const src = hash ? `https://cravatar.cn/avatar/${hash}?s=96&d=identicon` : (urls?.['96'] || urls?.['48'] || urls?.['24'] || '');
             return src;
           }
           function escapeHtml(s) { return (s||'').replace(/[&<>]/g, (c)=>({"&":"&","<":"<",">":">"}[c])); }
@@ -346,6 +351,7 @@ const API_ROOT = import.meta.env.CFBLOG_API ?? 'https://cfblog.zxd.im';
       </script>
 
       <script defer src="/assets/highlight.min.js" onload="hljs.initHighlightingOnLoad();"></script>
+      <script defer src={codeCopyUrl}></script>
     </article>
   ) : (
     <article class="notfound">

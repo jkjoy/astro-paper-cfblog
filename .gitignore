@@ -1,2 +1,3 @@
 /.astro
 /node_modules
+src/pages/code-test.astro
