@@ -9,6 +9,8 @@
     "astro": "astro"
   },
   "dependencies": {
+    "@astrojs/rss": "^4.0.13",
+    "@astrojs/sitemap": "^3.6.0",
     "astro": "^5.15.1",
     "markdown-it": "^14.1.0"
   },

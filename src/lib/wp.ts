@@ -28,7 +28,6 @@ export interface WPPost {
   date: string;
   modified: string;
   author: number;
-  link?: string;
   categories?: number[];
   tags?: number[];
 }
@@ -79,7 +78,6 @@ function mapPost(p: WPPostRaw): WPPost {
     date: p.date,
     modified: p.modified,
     author: p.author,
-    link: p.link,
     categories: p.categories,
     tags: p.tags,
   };
@@ -93,7 +91,7 @@ export async function getPosts(
     page,
     per_page: perPage,
     _embed: 1,
-    _fields: 'id,slug,title,excerpt,content,date,modified,author,link,categories,tags',
+    _fields: 'id,slug,title,excerpt,content,date,modified,author,categories,tags',
   });
   const { data, headers } = await fetchJSON<WPPostRaw[]>(url);
   const totalPages = Number(headers.get('X-WP-TotalPages') || 0);
@@ -105,7 +103,7 @@ export async function getPostBySlug(slug: string): Promise<WPPost | null> {
   const url = buildURL(`${WP_V2}/posts`, {
     slug,
     _embed: 1,
-    _fields: 'id,slug,title,excerpt,content,date,modified,author,link,categories,tags',
+    _fields: 'id,slug,title,excerpt,content,date,modified,author,categories,tags',
   });
   const { data } = await fetchJSON<WPPostRaw[]>(url);
   const p = data[0];
@@ -204,7 +202,7 @@ export async function getPostsByCategory(categoryId: number, page = 1, perPage =
     page,
     per_page: perPage,
     _embed: 1,
-    _fields: 'id,slug,title,excerpt,content,date,modified,author,link,categories,tags',
+    _fields: 'id,slug,title,excerpt,content,date,modified,author,categories,tags',
   });
   const { data, headers } = await fetchJSON<WPPostRaw[]>(url);
   const totalPages = Number(headers.get('X-WP-TotalPages') || 0);
@@ -218,7 +216,7 @@ export async function getPostsByTag(tagId: number, page = 1, perPage = PAGE_SIZE
     page,
     per_page: perPage,
     _embed: 1,
-    _fields: 'id,slug,title,excerpt,content,date,modified,author,link,categories,tags',
+    _fields: 'id,slug,title,excerpt,content,date,modified,author,categories,tags',
   });
   const { data, headers } = await fetchJSON<WPPostRaw[]>(url);
   const totalPages = Number(headers.get('X-WP-TotalPages') || 0);
@@ -279,7 +277,6 @@ export interface WPPage {
   content?: string;
   date: string;
   modified: string;
-  link?: string;
 }
 
 function mapPage(p: WPPageRaw): WPPage {
@@ -290,14 +287,13 @@ function mapPage(p: WPPageRaw): WPPage {
     content: p.content?.rendered,
     date: p.date,
     modified: p.modified,
-    link: p.link,
   };
 }
 
 export async function getPageBySlug(slug: string): Promise<WPPage | null> {
   const url = buildURL(`${WP_V2}/pages`, {
     slug,
-    _fields: 'id,slug,title,content,date,modified,link',
+    _fields: 'id,slug,title,content,date,modified',
   });
   const { data } = await fetchJSON<WPPageRaw[]>(url);
   const p = data[0];
@@ -483,7 +479,6 @@ export interface WPUser {
   name: string;
   url?: string;
   description?: string;
-  link?: string;
   slug?: string;
   avatar?: string;
   email?: string;
@@ -492,14 +487,18 @@ export interface WPUser {
 
 function mapUser(u: WPUserRaw): WPUser {
   const avatars = u.avatar_urls || {};
-  const avatar = avatars['96'] || avatars['48'] || avatars['24'] || undefined;
+
+  // 将 Gravatar URL 替换为 Cravatar 加速节点
+  let avatar = avatars['96'] || avatars['48'] || avatars['24'] || undefined;
+  if (avatar) {
+    avatar = avatar.replace('www.gravatar.com', 'cravatar.cn');
+  }
 
   return {
     id: u.id,
     name: u.name || '访客',
     url: u.url,
     description: u.description,
-    link: u.link,
     slug: u.slug,
     avatar,
     email: u.email,
