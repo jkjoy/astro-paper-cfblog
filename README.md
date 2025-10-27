@@ -94,7 +94,7 @@ npm run preview
    - Framework preset: Astro
    - Build command: `npm run build`
    - Output directory: `dist`
-4. 可选环境变量：后续可增加 `PUBLIC_WP_API_ROOT` 以覆盖默认 API 根
+4. 可选环境变量： `CFBLOG_API` 以覆盖默认 API 根，`SITE_URL` 以覆盖默认网站地址(RSS订阅需要)
 5. 部署完成后访问站点域名
 
 ## 常见问题

@@ -10,13 +10,17 @@ const brandName = site?.name ?? 'CFBlog';
 const pageTitle = props.title ?? brandName;
 const pageDesc = props.description ?? site?.description ?? '基于 WordPress REST API 的 Astro 博客';
 const footerText = settings?.site_footer_text;
+const favicon = settings?.site_favicon ?? '/favicon.svg';
+const faviconType = favicon.endsWith('.svg') ? 'image/svg+xml' :
+                    favicon.endsWith('.png') ? 'image/png' :
+                    favicon.endsWith('.ico') ? 'image/x-icon' : 'image/svg+xml';
 ---
 <html lang="zh-CN" class="not-ready lg:text-base" style="--bg: #faf8f1">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width" />
     <meta name="generator" content={Astro.generator} />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type={faviconType} href={favicon} />
     <meta name="description" content={pageDesc} />
     <meta name="theme-color" content="#faf8f1" />
     <title>{pageTitle}</title>
@@ -24,6 +28,7 @@ const footerText = settings?.site_footer_text;
     <link rel="preload" as="image" href="/assets/theme.png" />
     <link rel="alternate" type="application/rss+xml" title={`${brandName} RSS Feed`} href="/rss.xml" />
     <link rel="sitemap" href="/sitemap-index.xml" />
+    {settings?.head_html && <Fragment set:html={settings.head_html} />}
     <slot name="head" />
   </head>
   <body class="bg-(--bg) text-black antialiased duration-200 ease-out [-webkit-tap-highlight-color:transparent] dark:text-white">
@@ -76,6 +81,7 @@ const footerText = settings?.site_footer_text;
             href="/about"
             >关于</a
           >
+          
         </nav>
       </div>
     </header>

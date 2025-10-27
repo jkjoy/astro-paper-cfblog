@@ -8,7 +8,7 @@ import sitemap from '@astrojs/sitemap';
 // 从环境变量获取前端站点 URL
 // 构建时应通过环境变量 SITE_URL 指定前端地址
 // 例如: SITE_URL=https://your-frontend-site.com npm run build
-const siteUrl = process.env.SITE_URL || 'https://your-frontend-site.com';
+const siteUrl = process.env.SITE_URL || 'http://localhost:4321';
 
 // https://astro.build/config
 export default defineConfig({

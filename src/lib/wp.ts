@@ -310,6 +310,7 @@ export interface WPSettings {
   site_favicon?: string;
   site_author?: string;
   site_keywords?: string;
+  head_html?: string;
 }
 
 export async function getSettings(): Promise<WPSettings> {
