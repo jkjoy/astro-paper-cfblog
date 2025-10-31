@@ -18,10 +18,9 @@ https://github.com/jkjoy/cfblog
 - 链接页：优先从 WordPress pages 的 `links` 页面拉取，缺省时使用静态占位列表 [src/pages/links.astro](src/pages/links.astro)、[src/lib/wp.ts](src/lib/wp.ts)
 - 纯静态输出，适配 Cloudflare Pages
 
-## 数据源配置
-- 默认 WordPress API：`https://cfblog.zxd.im/`（可在 [src/lib/wp.ts](src/lib/wp.ts) 修改 `API_ROOT`）。
-- 每页条数：`PAGE_SIZE=9`（可在 [src/lib/wp.ts](src/lib/wp.ts) 修改）。
-- 详情页分类/标签元信息通过按 ID 查询 term（已在 [src/lib/wp.ts](src/lib/wp.ts) 实现）。
+## 环境变量配置
+`CFBLOG_API` 以覆盖默认 API 根(部署cfblog之后的地址)
+`SITE_URL` 以覆盖默认网站地址(RSS订阅需要)
 
 ## 路由与页面
 - `/`、`/page/[n]`：文章列表与分页
