@@ -19,8 +19,12 @@ https://github.com/jkjoy/cfblog
 - 纯静态输出，适配 Cloudflare Pages
 
 ## 环境变量配置
+
 `CFBLOG_API` 以覆盖默认 API 根(部署cfblog之后的地址)
+
 `SITE_URL` 以覆盖默认网站地址(RSS订阅需要)
+
+`COMMENTS` 显示评论列表则为`true` 反之为`false`
 
 ## 路由与页面
 - `/`、`/page/[n]`：文章列表与分页
