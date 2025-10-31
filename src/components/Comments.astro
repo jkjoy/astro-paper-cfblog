@@ -198,8 +198,43 @@ const childrenOf = (id: number) => commentsByParent.get(id) ?? [];
         const res = await fetch(`${apiRoot}/wp-json/wp/v2/comments?post=${postId}&per_page=100`);
         if (!res.ok) return;
         const data = await res.json();
-        renderCommentsList(Array.isArray(data) ? data : []);
+        const comments = Array.isArray(data) ? data : [];
+
+        // 将扁平的评论数据转换成嵌套结构
+        const commentsWithChildren = buildCommentTree(comments);
+        renderCommentsList(commentsWithChildren);
       } catch {}
+    }
+
+    // 将扁平评论列表转换成嵌套树结构
+    function buildCommentTree(flatComments: any[]): any[] {
+      const commentMap = new Map<number, any>();
+      const rootComments: any[] = [];
+
+      // 第一遍：创建所有评论的副本，并初始化 children 数组
+      flatComments.forEach(comment => {
+        commentMap.set(comment.id, { ...comment, children: [] });
+      });
+
+      // 第二遍：建立父子关系
+      flatComments.forEach(comment => {
+        const commentWithChildren = commentMap.get(comment.id);
+        if (comment.parent === 0) {
+          // 顶级评论
+          rootComments.push(commentWithChildren);
+        } else {
+          // 子评论，添加到父评论的 children 数组
+          const parent = commentMap.get(comment.parent);
+          if (parent) {
+            parent.children.push(commentWithChildren);
+          } else {
+            // 如果找不到父评论，将其作为顶级评论处理
+            rootComments.push(commentWithChildren);
+          }
+        }
+      });
+
+      return rootComments;
     }
 
     // 构建头像 URL，使用 Cravatar 镜像加速
@@ -245,7 +280,8 @@ const childrenOf = (id: number) => commentsByParent.get(id) ?? [];
     function renderCommentsList(list: any[]) {
       if (!commentsContainer) return;
       const title = `<h2 class="my-0! pb-2.5">评论</h2>`;
-      const body = (list||[]).filter((x: any)=>x && x.parent===0).map(renderOne).join('<hr class="my-3 border-t border-black/10 dark:border-white/20" style="margin-bottom:-10px" />');
+      // list 已经是只包含顶级评论的树形结构，不需要再过滤
+      const body = (list||[]).map(renderOne).join('<hr class="my-3 border-t border-black/10 dark:border-white/20" style="margin-bottom:-10px" />');
       commentsContainer.innerHTML = title + (body || `<p class="text-xs antialiased opacity-60">暂无评论</p>`);
     }
 
