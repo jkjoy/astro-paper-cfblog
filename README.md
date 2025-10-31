@@ -1,6 +1,9 @@
-# CFBlog: Astro + WordPress REST API
-
+## 简介
 一个基于 Astro 的静态博客，从 WordPress REST API 拉取内容并在构建时 SSG 预渲染。样式参考 Paper（简洁、单列、纯文字链接）。
+
+## 后端项目
+
+https://github.com/jkjoy/cfblog
 
 ## 功能
 - 首页文章列表与分页（每页 9 篇）[src/pages/index.astro](src/pages/index.astro)、[src/pages/page/[page].astro](src/pages/page/%5Bpage%5D.astro)
@@ -15,37 +18,8 @@
 - 链接页：优先从 WordPress pages 的 `links` 页面拉取，缺省时使用静态占位列表 [src/pages/links.astro](src/pages/links.astro)、[src/lib/wp.ts](src/lib/wp.ts)
 - 纯静态输出，适配 Cloudflare Pages
 
-## 目录结构
-```text
-/
-├── public/
-├── src/
-│   ├── components/
-│   │   ├── Pagination.astro
-│   │   └── PostCard.astro
-│   ├── layouts/
-│   │   └── BaseLayout.astro
-│   ├── lib/
-│   │   ├── wp.ts
-│   │   └── markdown.ts
-│   └── pages/
-│       ├── index.astro
-│       ├── page/[page].astro
-│       ├── post/[slug].astro
-│       ├── archive.astro
-│       ├── categories.astro
-│       ├── tags.astro
-│       ├── category/[slug].astro
-│       ├── category/[slug]/page/[page].astro
-│       ├── tag/[slug].astro
-│       └── tag/[slug]/page/[page].astro
-├── astro.config.mjs
-├── package.json
-└── tsconfig.json
-```
-
 ## 数据源配置
-- 默认 WordPress API：`https://cfblog.zxd.im/wp-json`（可在 [src/lib/wp.ts](src/lib/wp.ts) 修改 `API_ROOT`）。
+- 默认 WordPress API：`https://cfblog.zxd.im/`（可在 [src/lib/wp.ts](src/lib/wp.ts) 修改 `API_ROOT`）。
 - 每页条数：`PAGE_SIZE=9`（可在 [src/lib/wp.ts](src/lib/wp.ts) 修改）。
 - 详情页分类/标签元信息通过按 ID 查询 term（已在 [src/lib/wp.ts](src/lib/wp.ts) 实现）。
 
@@ -58,11 +32,6 @@
 - `/tags`：所有标签列表
 - `/tag/[slug]`、`/tag/[slug]/page/[n]`：标签聚合与分页
 - `/links`：链接页（WordPress pages：`links`；无则静态列表）
-
-## SSG 说明
-- 分页路径由页面内的 `getStaticPaths()` 预生成：示例 [src/pages/page/[page].astro](src/pages/page/%5Bpage%5D.astro)、[src/pages/category/[slug]/page/[page].astro](src/pages/category/%5Bslug%5D/page/%5Bpage%5D.astro)、[src/pages/tag/[slug]/page/[page].astro](src/pages/tag/%5Bslug%5D/page/%5Bpage%5D.astro)
-- 文章详情路径由 [src/pages/post/[slug].astro](src/pages/post/%5Bslug%5D.astro) 从 WordPress 拉取所有 slug 预生成
-- 若远端暂无文章或接口受限，可能只生成首页与第一页；可调整 `getAllPostSlugs(limit)` 的上限以优化构建时间
 
 ## Links 页面接入
 - 在 WordPress 中创建页面，固定链接为 `links`（slug）
@@ -96,12 +65,6 @@ npm run preview
    - Output directory: `dist`
 4. 可选环境变量： `CFBLOG_API` 以覆盖默认 API 根，`SITE_URL` 以覆盖默认网站地址(RSS订阅需要)
 5. 部署完成后访问站点域名
-
-## 常见问题
-- WordPress 接口不可达：检查 `API_ROOT` 与网络连通性
-- 构建未生成详情页：确认 WordPress 站点有公开 posts 且接口返回正常
-- 远端数据量大导致构建时间长：降低 `getAllPostSlugs(limit)` 或归档的总量限制
-- 富文本安全：基本清理了 `<script>/<style>`，复杂内容建议在 WordPress 端处理
 
 ## 许可证
 MIT
